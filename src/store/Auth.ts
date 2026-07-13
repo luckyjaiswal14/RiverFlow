@@ -17,7 +17,7 @@ interface IAuthStore {
   hydrated: boolean
 
   setHydrated(): void;
-  verfiySession(): Promise<void>;
+  verifySession(): Promise<void>;
   login(
     email: string,
     password: string
@@ -51,7 +51,7 @@ export const useAuthStore = create<IAuthStore>()(
         set({hydrated: true})
       },
 
-      async verfiySession() {
+      async verifySession() {
         try {
           const session = await account.getSession("current")
           set({session})
