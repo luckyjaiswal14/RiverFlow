@@ -74,5 +74,5 @@ A full-stack developer Q&A community platform, inspired by Stack Overflow. Built
 ## Contributing
 Contributions, issues and feature requests are welcome!
 
-## License
-MIT License
+## Author
+Lucky Jaiswal
