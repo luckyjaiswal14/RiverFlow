@@ -1,10 +1,8 @@
-import env from "@/env";
-
 import { Client, Account, Avatars, Databases, Storage } from "appwrite";
 
 const client = new Client()
-    .setEndpoint(env.appwrite.endpoint) // Your API Endpoint
-    .setProject(env.appwrite.projectId); // Your project ID
+    .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!) // Your API Endpoint 
+    .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!); // Your project ID
 
 const databases = new Databases(client)
 const account = new Account(client);
@@ -13,3 +11,10 @@ const storage = new Storage(client);
 
 
 export { client, databases, account, avatars, storage}
+
+
+
+/* 
+    .setEndpoint(env.appwrite.endpoint) // Your API Endpoint
+    .setProject(env.appwrite.projectId); // Your project ID
+*/

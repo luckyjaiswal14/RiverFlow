@@ -1,74 +1,124 @@
 import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
+import { persist } from "zustand/middleware";
+
+import {AppwriteException, ID, Models} from "appwrite"
 import { account } from "@/models/client/config";
-import { Models } from "appwrite";
 
-export interface UserPrefs extends Models.Preferences {
-    reputation: number;
+
+export interface UserPrefs {
+  reputation: number
 }
 
-interface AuthStore {
-    session: Models.Session | null;
-    user: Models.User<UserPrefs> | null;
-    jwt: string | null;
-    hydrated: boolean;
-    setSession: (session: Models.Session | null) => void;
-    setUser: (user: Models.User<UserPrefs> | null) => void;
-    setJwt: (jwt: string | null) => void;
-    verifySession: () => Promise<void>;
-    createAccount: (name: string, email: string, password: string) => Promise<{ error?: { message: string } }>;
-    login: (email: string, password: string) => Promise<{ error?: { message: string } }>;
-    logout: () => Promise<void>;
+interface IAuthStore {
+  session: Models.Session | null;
+  jwt: string | null
+  user: Models.User<UserPrefs> | null
+  hydrated: boolean
+
+  setHydrated(): void;
+  verfiySession(): Promise<void>;
+  login(
+    email: string,
+    password: string
+  ): Promise<
+  {
+    success: boolean;
+    error?: AppwriteException| null
+  }>
+  createAccount(
+    name: string,
+    email: string,
+    password: string
+  ): Promise<
+  {
+    success: boolean;
+    error?: AppwriteException| null
+  }>
+  logout(): Promise<void>
 }
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
-    session: null,
-    user: null,
-    jwt: null,
-    hydrated: false,
-    setSession: (session) => set({ session }),
-    setUser: (user) => set({ user }),
-    setJwt: (jwt) => set({ jwt }),
-    verifySession: async () => {
+
+export const useAuthStore = create<IAuthStore>()(
+  persist(
+    immer((set) => ({
+      session: null,
+      jwt: null,
+      user: null,
+      hydrated: false,
+
+      setHydrated() {
+        set({hydrated: true})
+      },
+
+      async verfiySession() {
         try {
-            const currentSession = await account.getSession("current");
-            const currentUser = await account.get<UserPrefs>();
-            const currentJwt = await account.createJWT();
+          const session = await account.getSession("current")
+          set({session})
 
-            set({
-                session: currentSession,
-                user: currentUser,
-                jwt: currentJwt.jwt,
-                hydrated: true,
-            });
         } catch (error) {
-            console.error("No active session found", error);
-            set({
-                session: null,
-                user: null,
-                jwt: null,
-                hydrated: true,
-            });
+          console.log(error)
         }
-    },
-    createAccount: async (name, email, password) => {
+      },
+
+      async login(email: string, password: string) {
         try {
-            await account.create("unique()", email, password, name);
-            return await get().login(email, password);
-        } catch (error: any) {
-            return { error };
+          const session = await account.createEmailPasswordSession(email, password)
+          const [user, {jwt}] = await Promise.all([
+            account.get<UserPrefs>(),
+            account.createJWT()
+
+          ])
+          if (!user.prefs?.reputation) await account.updatePrefs<UserPrefs>({
+            reputation: 0
+          })
+
+          set({session, user, jwt})
+          
+          return { success: true}
+
+        } catch (error) {
+
+          console.log(error)
+          return {
+            success: false,
+            error: error instanceof AppwriteException ? error: null,
+            
+          }
         }
-    },
-    login: async (email, password) => {
+      },
+
+      async createAccount(name:string, email: string, password: string) {
         try {
-            await account.createEmailPasswordSession(email, password);
-            await get().verifySession();
-            return {};
-        } catch (error: any) {
-            return { error };
+          await account.create(ID.unique(), email, password, name)
+          return {success: true}
+        } catch (error) {
+          console.log(error)
+          return {
+            success: false,
+            error: error instanceof AppwriteException ? error: null,
+            
+          }
         }
-    },
-    logout: async () => {
-        await account.deleteSession("current");
-        set({ session: null, user: null, jwt: null });
+      },
+
+      async logout() {
+        try {
+          await account.deleteSessions()
+          set({session: null, jwt: null, user: null})
+          
+        } catch (error) {
+          console.log(error)
+        }
+      },
+    })),
+    {
+      name: "auth",
+      onRehydrateStorage(){
+        return (state, error) => {
+          if (!error) state?.setHydrated()
+        }
+      }
     }
-}));
+  )
+)

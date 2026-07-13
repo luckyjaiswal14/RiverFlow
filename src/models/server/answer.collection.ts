@@ -1,44 +1,53 @@
-import { Permission } from "node-appwrite";
+import { Permission, Role } from "node-appwrite";
 import { answerCollection, db } from "../name";
 import { databases } from "./config";
 
 export default async function createAnswerCollection() {
-    // Creating Collection
-    try {
-        await databases.createCollection(db, answerCollection, answerCollection, [
-            Permission.create("users"),
-            Permission.read("any"),
-            Permission.read("users"),
-            Permission.update("users"),
-            Permission.delete("users"),
-        ]);
-        console.log("Answer Collection Created");
+  try {
+    // Create Collection
+    await databases.createCollection(
+      db,
+      answerCollection,
+      answerCollection,
+      [
+        Permission.create(Role.users()),
+        Permission.read(Role.any()),
+        Permission.read(Role.users()),
+        Permission.update(Role.users()),
+        Permission.delete(Role.users()),
+      ]
+    );
 
-        // Creating Attributes
-        await Promise.all([
-            databases.createStringAttribute(db, answerCollection, "content", 10000, true),
-            databases.createStringAttribute(db, answerCollection, "questionId", 50, true),
-            databases.createStringAttribute(db, answerCollection, "authorId", 50, true),
-        ]);
-        console.log("Answer Attributes Created");
+    console.log("✅ Answer Collection Created");
 
-        // create Indexes
-        try {
-            await Promise.all([
-                databases.createIndex(
-                    db,
-                    answerCollection,
-                    "questionId",
-                    "key" as any,
-                    ["questionId"],
-                    ["asc" as any]
-                )
-            ]);
-            console.log("Answer Indexes created");
-        } catch (error: any) {
-            console.log("Error creating Answer Indexes:", error?.message);
-        }
-    } catch (error: any) {
-        console.log("Answer Collection already exists or error:", error?.message);
-    }
+    // Create Attributes
+    await Promise.all([
+      databases.createStringAttribute(
+        db,
+        answerCollection,
+        "content",
+        10000,
+        true
+      ),
+      databases.createStringAttribute(
+        db,
+        answerCollection,
+        "questionId",
+        50,
+        true
+      ),
+      databases.createStringAttribute(
+        db,
+        answerCollection,
+        "authorId",
+        50,
+        true
+      ),
+    ]);
+
+    console.log("✅ Answer Attributes Created");
+  } catch (error) {
+    console.error("❌ Error creating Answer Collection:", error);
+  }
 }
+
